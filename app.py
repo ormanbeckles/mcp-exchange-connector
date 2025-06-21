@@ -1,118 +1,68 @@
-from fastapi import FastAPI
-from pydantic import BaseModel
+from fastapi import FastAPI, Request
+from fastapi.responses import JSONResponse
+from fastapi.middleware.cors import CORSMiddleware
 import json
 
 app = FastAPI()
 
-# Load data from records.json
-with open("records.json", "r") as file:
-    RECORDS = json.load(file)
-LOOKUP = {record["id"]: record for record in RECORDS}
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
-class SearchQuery(BaseModel):
-    query: str
+with open("records.json") as f:
+    RECORDS = json.load(f)
 
-class FetchRequest(BaseModel):
-    id: str
+LOOKUP = {r["id"]: r for r in RECORDS}
 
-@app.get("/")
-async def home():
-    return {"status": "running"}
+@app.post("/")
+async def rpc(request: Request):
+    data = await request.json()
+    method = data.get("method")
+    params = data.get("params")
+    id = data.get("id")
 
-@app.post("/tools/list")
-async def list_tools():
-    return {
-        "tools": [
-            {
-                "name": "search",
-                "description": "Searches for resources using the provided query string and returns matching results.",
-                "input_schema": {
-                    "type": "object",
-                    "properties": {
-                        "query": {"type": "string", "description": "Search query."}
-                    },
-                    "required": ["query"]
-                },
-                "output_schema": {
-                    "type": "object",
-                    "properties": {
-                        "results": {
-                            "type": "array",
-                            "items": {
-                                "type": "object",
-                                "properties": {
-                                    "id": {"type": "string", "description": "ID of the resource."},
-                                    "title": {"type": "string", "description": "Title or headline of the resource."},
-                                    "text": {"type": "string", "description": "Text snippet or summary from the resource."},
-                                    "url": {"type": ["string", "null"], "description": "URL of the resource."}
-                                },
-                                "required": ["id", "title", "text"]
-                            }
+    if method == "tools/list":
+        return JSONResponse({
+            "jsonrpc": "2.0",
+            "result": {
+                "tools": [
+                    {
+                        "name": "search",
+                        "description": "Search cupcake orders by keyword",
+                        "input_schema": {
+                            "type": "object",
+                            "properties": {"query": {"type": "string"}},
+                            "required": ["query"]
                         }
                     },
-                    "required": ["results"]
-                }
+                    {
+                        "name": "fetch",
+                        "description": "Fetch a cupcake order by ID",
+                        "input_schema": {
+                            "type": "object",
+                            "properties": {"id": {"type": "string"}},
+                            "required": ["id"]
+                        }
+                    }
+                ]
             },
-            {
-                "name": "fetch",
-                "description": "Retrieves detailed content for a specific resource identified by the given ID.",
-                "input_schema": {
-                    "type": "object",
-                    "properties": {
-                        "id": {"type": "string", "description": "ID of the resource to fetch."}
-                    },
-                    "required": ["id"]
-                },
-                "output_schema": {
-                    "type": "object",
-                    "properties": {
-                        "id": {"type": "string", "description": "ID of the resource."},
-                        "title": {"type": "string", "description": "Title of the resource."},
-                        "text": {"type": "string", "description": "Complete textual content of the resource."},
-                        "url": {"type": ["string", "null"], "description": "URL of the resource."},
-                        "metadata": {
-                            "type": ["object", "null"],
-                            "additionalProperties": {"type": "string"},
-                            "description": "Optional metadata providing additional context."
-                        }
-                    },
-                    "required": ["id", "title", "text"]
-                }
-            }
-        ]
-    }
+            "id": id
+        })
 
-@app.post("/search")
-async def search(query: SearchQuery):
-    toks = query.query.lower().split()
-    results = []
-    for r in RECORDS:
-        hay = " ".join(
-            [
-                r.get("title", ""),
-                r.get("text", ""),
-                " ".join(r.get("metadata", {}).values()),
-            ]
-        ).lower()
-        if any(t in hay for t in toks):
-            results.append({
-                "id": r["id"],
-                "title": r["title"],
-                "text": r["text"],
-                "url": r.get("url", None)
-            })
-    return {"results": results}
+    elif method == "search":
+        query = params.get("query", "").lower()
+        ids = [r["id"] for r in RECORDS if query in (r["title"] + r["text"]).lower()]
+        results = [{"id": r["id"], "title": r["title"], "text": r["text"], "url": None} for r in RECORDS if r["id"] in ids]
+        return JSONResponse({"jsonrpc": "2.0", "result": {"results": results}, "id": id})
 
-@app.post("/fetch")
-async def fetch(fetch_request: FetchRequest):
-    id = fetch_request.id
-    if id not in LOOKUP:
-        return {"error": "unknown id"}
-    r = LOOKUP[id]
-    return {
-        "id": r["id"],
-        "title": r["title"],
-        "text": r["text"],
-        "url": r.get("url", None),
-        "metadata": r.get("metadata", None)
-    }
+    elif method == "fetch":
+        id_param = params.get("id")
+        record = LOOKUP.get(id_param)
+        if not record:
+            return JSONResponse({"jsonrpc": "2.0", "error": {"code": -32000, "message": "Not Found"}, "id": id})
+        return JSONResponse({"jsonrpc": "2.0", "result": record, "id": id})
+
+    return JSONResponse({"jsonrpc": "2.0", "error": {"code": -32601, "message": "Method not found"}, "id": id})
