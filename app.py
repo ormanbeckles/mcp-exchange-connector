@@ -30,11 +30,10 @@ async def root():
 @app.post("/")
 async def mcp_endpoint(req: Request):
     body = await req.json()
-    print(f"Incoming request: {json.dumps(body)}")
     rpc = RPC(**body)
 
     if rpc.method == "initialize":
-        response = {
+        return {
             "jsonrpc": "2.0",
             "result": {
                 "capabilities": {
@@ -44,10 +43,20 @@ async def mcp_endpoint(req: Request):
             },
             "id": rpc.id
         }
-        print(f"Initialize response: {response}")
-        return response
 
-    if rpc.method == "search":
+    elif rpc.method == "tools/list":
+        return {
+            "jsonrpc": "2.0",
+            "result": {
+                "tools": [
+                    {"name": "search", "description": "Search cupcake orders"},
+                    {"name": "fetch", "description": "Fetch cupcake order by ID"}
+                ]
+            },
+            "id": rpc.id
+        }
+
+    elif rpc.method == "search":
         q = rpc.params.get("query", "").lower()
         results = [
             {
@@ -59,29 +68,21 @@ async def mcp_endpoint(req: Request):
             for rec in RECORDS
             if q in rec["title"].lower() or q in rec["text"].lower()
         ]
-        response = {"jsonrpc": "2.0", "result": {"results": results}, "id": rpc.id}
-        print(f"Search response: {response}")
-        return response
+        return {"jsonrpc": "2.0", "result": {"results": results}, "id": rpc.id}
 
-    if rpc.method == "fetch":
+    elif rpc.method == "fetch":
         rid = rpc.params.get("id", "")
         rec = next((r for r in RECORDS if r["id"] == rid), None)
         if rec:
-            response = {"jsonrpc": "2.0", "result": rec, "id": rpc.id}
-            print(f"Fetch response: {response}")
-            return response
-        response = {
+            return {"jsonrpc": "2.0", "result": rec, "id": rpc.id}
+        return {
             "jsonrpc": "2.0",
             "error": {"code": -32000, "message": "Not found"},
             "id": rpc.id
         }
-        print(f"Fetch error response: {response}")
-        return response
 
-    response = {
+    return {
         "jsonrpc": "2.0",
         "error": {"code": -32601, "message": "Method not found"},
         "id": rpc.id
     }
-    print(f"Unhandled method response: {response}")
-    return response
