@@ -10,8 +10,66 @@ with open("records.json", "r") as file:
 LOOKUP = {r["id"]: r for r in RECORDS}
 
 @app.get("/")
-async def root():
-    return {"status": "MCP server is running"}
+async def tools_list():
+    return {
+        "tools": [
+            {
+                "name": "search",
+                "description": "Searches for resources using the provided query string and returns matching results.",
+                "input_schema": {
+                    "type": "object",
+                    "properties": {
+                        "query": {"type": "string", "description": "Search query."}
+                    },
+                    "required": ["query"]
+                },
+                "output_schema": {
+                    "type": "object",
+                    "properties": {
+                        "results": {
+                            "type": "array",
+                            "items": {
+                                "type": "object",
+                                "properties": {
+                                    "id": {"type": "string"},
+                                    "title": {"type": "string"},
+                                    "text": {"type": "string"},
+                                    "url": {"type": ["string", "null"]}
+                                },
+                                "required": ["id", "title", "text"]
+                            }
+                        }
+                    },
+                    "required": ["results"]
+                }
+            },
+            {
+                "name": "fetch",
+                "description": "Retrieves detailed content for a specific resource identified by the given ID.",
+                "input_schema": {
+                    "type": "object",
+                    "properties": {
+                        "id": {"type": "string", "description": "ID of the resource to fetch."}
+                    },
+                    "required": ["id"]
+                },
+                "output_schema": {
+                    "type": "object",
+                    "properties": {
+                        "id": {"type": "string"},
+                        "title": {"type": "string"},
+                        "text": {"type": "string"},
+                        "url": {"type": ["string", "null"]},
+                        "metadata": {
+                            "type": ["object", "null"],
+                            "additionalProperties": {"type": "string"}
+                        }
+                    },
+                    "required": ["id", "title", "text"]
+                }
+            }
+        ]
+    }
 
 @app.post("/")
 async def mcp_endpoint(request: Request):
