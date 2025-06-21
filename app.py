@@ -1,68 +1,34 @@
-from fastapi import FastAPI, Request
-from fastapi.responses import JSONResponse
-from fastapi.middleware.cors import CORSMiddleware
+from fastapi import FastAPI
+from fastmcp import FastMCP
 import json
-
-app = FastAPI()
-
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["*"],
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
 
 with open("records.json") as f:
     RECORDS = json.load(f)
+    LOOKUP = {r["id"]: r for r in RECORDS}
 
-LOOKUP = {r["id"]: r for r in RECORDS}
+def create_server():
+    mcp = FastMCP(name="Cupcake MCP", instructions="Search cupcake orders")
 
-@app.post("/")
-async def rpc(request: Request):
-    data = await request.json()
-    method = data.get("method")
-    params = data.get("params")
-    id = data.get("id")
-
-    if method == "tools/list":
-        return JSONResponse({
-            "jsonrpc": "2.0",
-            "result": {
-                "tools": [
-                    {
-                        "name": "search",
-                        "description": "Search cupcake orders by keyword",
-                        "input_schema": {
-                            "type": "object",
-                            "properties": {"query": {"type": "string"}},
-                            "required": ["query"]
-                        }
-                    },
-                    {
-                        "name": "fetch",
-                        "description": "Fetch a cupcake order by ID",
-                        "input_schema": {
-                            "type": "object",
-                            "properties": {"id": {"type": "string"}},
-                            "required": ["id"]
-                        }
-                    }
+    @mcp.tool()
+    async def search(query: str):
+        toks = query.lower().split()
+        ids = []
+        for r in RECORDS:
+            hay = " ".join(
+                [
+                    r.get("title", ""),
+                    r.get("text", ""),
+                    " ".join(r.get("metadata", {}).values()),
                 ]
-            },
-            "id": id
-        })
+            ).lower()
+            if any(t in hay for t in toks):
+                ids.append(r["id"])
+        return {"ids": ids}
 
-    elif method == "search":
-        query = params.get("query", "").lower()
-        ids = [r["id"] for r in RECORDS if query in (r["title"] + r["text"]).lower()]
-        results = [{"id": r["id"], "title": r["title"], "text": r["text"], "url": None} for r in RECORDS if r["id"] in ids]
-        return JSONResponse({"jsonrpc": "2.0", "result": {"results": results}, "id": id})
+    @mcp.tool()
+    async def fetch(id: str):
+        if id not in LOOKUP:
+            raise ValueError("unknown id")
+        return LOOKUP[id]
 
-    elif method == "fetch":
-        id_param = params.get("id")
-        record = LOOKUP.get(id_param)
-        if not record:
-            return JSONResponse({"jsonrpc": "2.0", "error": {"code": -32000, "message": "Not Found"}, "id": id})
-        return JSONResponse({"jsonrpc": "2.0", "result": record, "id": id})
-
-    return JSONResponse({"jsonrpc": "2.0", "error": {"code": -32601, "message": "Method not found"}, "id": id})
+    return mcp.app
