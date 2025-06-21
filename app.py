@@ -3,7 +3,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 import httpx
 import os
-from typing import Any, Dict
+from typing import Any, Dict, List
 
 app = FastAPI()
 
@@ -40,50 +40,39 @@ async def handle_rpc(request: Request):
             "jsonrpc": "2.0",
             "result": {
                 "capabilities": {
-                    "methods": ["testConnection", "testExchangeConnection"],
+                    "methods": ["search", "fetch"],
                     "protocolVersion": "2025-03-26"
                 }
             },
             "id": rpc_request.id
         }
 
-    if rpc_request.method == "testConnection":
+    elif rpc_request.method == "search":
+        query = rpc_request.params.get("query", "")
+        # Placeholder search implementation
+        results = [{"id": "email-123", "title": "Test Email", "text": "This is a test email from Exchange.", "url": None}]
         return {
             "jsonrpc": "2.0",
-            "result": "Connection successful",
+            "result": {"results": results},
             "id": rpc_request.id
         }
 
-    if rpc_request.method == "testExchangeConnection":
-        try:
-            async with httpx.AsyncClient() as client:
-                response = await client.options(
-                    EXCHANGE_ACTIVESYNC_URL,
-                    auth=(USERNAME, PASSWORD),
-                    headers={
-                        "Content-Type": "application/vnd.ms-sync.wbxml",
-                        "MS-ASProtocolVersion": "14.0"
-                    }
-                )
-            if response.status_code == 200:
-                return {
-                    "jsonrpc": "2.0",
-                    "result": "Exchange ActiveSync connection successful",
-                    "id": rpc_request.id
-                }
-            else:
-                return {
-                    "jsonrpc": "2.0",
-                    "error": {
-                        "code": response.status_code,
-                        "message": f"Exchange returned error: {response.status_code}"
-                    },
-                    "id": rpc_request.id
-                }
-        except Exception as e:
+    elif rpc_request.method == "fetch":
+        resource_id = rpc_request.params.get("id", "")
+        # Placeholder fetch implementation
+        if resource_id == "email-123":
+            resource = {
+                "id": "email-123",
+                "title": "Test Email",
+                "text": "Full content of the test email.",
+                "url": None,
+                "metadata": {"sender": "example@example.com"}
+            }
+            return {"jsonrpc": "2.0", "result": resource, "id": rpc_request.id}
+        else:
             return {
                 "jsonrpc": "2.0",
-                "error": {"code": -32000, "message": str(e)},
+                "error": {"code": -32000, "message": "Resource not found"},
                 "id": rpc_request.id
             }
 
