@@ -1,1 +1,17 @@
+[
+  {
+    "id": "cupcake-1",
+    "title": "Chocolate Cupcake",
+    "text": "Delicious chocolate cupcake",
+    "url": null,
+    "metadata": {"flavor": "chocolate"}
+  },
+  {
+    "id": "cupcake-2",
+    "title": "Vanilla Cupcake",
+    "text": "Classic vanilla cupcake",
+    "url": null,
+    "metadata": {"flavor": "vanilla"}
+  }
+]
 
