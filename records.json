@@ -1,17 +1,29 @@
 [
   {
-    "id": "cupcake-1",
-    "title": "Chocolate Cupcake",
-    "text": "Delicious chocolate cupcake",
-    "url": null,
-    "metadata": {"flavor": "chocolate"}
+    "id": "1",
+    "title": "Chocolate Cupcake Order",
+    "text": "A dozen chocolate cupcakes with vanilla frosting.",
+    "metadata": {
+      "customer": "Alice",
+      "date": "2024-04-10"
+    }
   },
   {
-    "id": "cupcake-2",
-    "title": "Vanilla Cupcake",
-    "text": "Classic vanilla cupcake",
-    "url": null,
-    "metadata": {"flavor": "vanilla"}
+    "id": "2",
+    "title": "Vanilla Cupcake Order",
+    "text": "A dozen vanilla cupcakes with chocolate frosting.",
+    "metadata": {
+      "customer": "Bob",
+      "date": "2024-04-11"
+    }
+  },
+  {
+    "id": "3",
+    "title": "Red Velvet Cupcake Order",
+    "text": "Half a dozen red velvet cupcakes with cream cheese frosting.",
+    "metadata": {
+      "customer": "Charlie",
+      "date": "2024-04-12"
+    }
   }
 ]
-
