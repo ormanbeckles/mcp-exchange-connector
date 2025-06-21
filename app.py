@@ -33,16 +33,28 @@ async def root():
 @app.post("/")
 async def handle_rpc(request: Request):
     req_json = await request.json()
-    print(f"Received request: {req_json}")
-
     rpc_request = RPCRequest(**req_json)
 
-    if rpc_request.method == "testConnection":
-        response = {"jsonrpc": "2.0", "result": "Connection successful", "id": rpc_request.id}
-        print(f"Response: {response}")
-        return response
+    if rpc_request.method == "initialize":
+        return {
+            "jsonrpc": "2.0",
+            "result": {
+                "capabilities": {
+                    "methods": ["testConnection", "testExchangeConnection"],
+                    "protocolVersion": "2025-03-26"
+                }
+            },
+            "id": rpc_request.id
+        }
 
-    elif rpc_request.method == "testExchangeConnection":
+    if rpc_request.method == "testConnection":
+        return {
+            "jsonrpc": "2.0",
+            "result": "Connection successful",
+            "id": rpc_request.id
+        }
+
+    if rpc_request.method == "testExchangeConnection":
         try:
             async with httpx.AsyncClient() as client:
                 response = await client.options(
@@ -54,13 +66,13 @@ async def handle_rpc(request: Request):
                     }
                 )
             if response.status_code == 200:
-                result = {
+                return {
                     "jsonrpc": "2.0",
                     "result": "Exchange ActiveSync connection successful",
                     "id": rpc_request.id
                 }
             else:
-                result = {
+                return {
                     "jsonrpc": "2.0",
                     "error": {
                         "code": response.status_code,
@@ -68,22 +80,15 @@ async def handle_rpc(request: Request):
                     },
                     "id": rpc_request.id
                 }
-            print(f"Response: {result}")
-            return result
-
         except Exception as e:
-            error_response = {
+            return {
                 "jsonrpc": "2.0",
                 "error": {"code": -32000, "message": str(e)},
                 "id": rpc_request.id
             }
-            print(f"Error Response: {error_response}")
-            return error_response
 
-    error_response = {
+    return {
         "jsonrpc": "2.0",
         "error": {"code": -32601, "message": "Method not found"},
         "id": rpc_request.id
     }
-    print(f"Error Response: {error_response}")
-    return error_response
