@@ -28,9 +28,9 @@ async def root():
     return {"status": "Cupcake MCP server running"}
 
 @app.post("/")
-async def handle_rpc(request: Request):
-    req_json = await request.json()
-    rpc = RPC(**req_json)
+async def mcp_endpoint(req: Request):
+    body = await req.json()
+    rpc = RPC(**body)
 
     if rpc.method == "initialize":
         return {
@@ -44,33 +44,25 @@ async def handle_rpc(request: Request):
             "id": rpc.id
         }
 
-    elif rpc.method == "search":
-        query = rpc.params.get("query", "").lower()
+    if rpc.method == "search":
+        q = rpc.params.get("query", "").lower()
         results = [
             {
                 "id": rec["id"],
                 "title": rec["title"],
                 "text": rec["text"],
-                "url": rec["url"]
+                "url": None
             }
             for rec in RECORDS
-            if query in rec["title"].lower() or query in rec["text"].lower()
+            if q in rec["title"].lower() or q in rec["text"].lower()
         ]
-        return {
-            "jsonrpc": "2.0",
-            "result": {"results": results},
-            "id": rpc.id
-        }
+        return {"jsonrpc": "2.0", "result": {"results": results}, "id": rpc.id}
 
-    elif rpc.method == "fetch":
-        record_id = rpc.params.get("id", "")
-        record = next((r for r in RECORDS if r["id"] == record_id), None)
-        if record:
-            return {
-                "jsonrpc": "2.0",
-                "result": record,
-                "id": rpc.id
-            }
+    if rpc.method == "fetch":
+        rid = rpc.params.get("id", "")
+        rec = next((r for r in RECORDS if r["id"] == rid), None)
+        if rec:
+            return {"jsonrpc": "2.0", "result": rec, "id": rpc.id}
         return {
             "jsonrpc": "2.0",
             "error": {"code": -32000, "message": "Not found"},
