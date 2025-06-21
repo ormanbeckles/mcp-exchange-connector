@@ -1,6 +1,6 @@
 from fastapi import FastAPI, Request
-import json
 from fastapi.responses import JSONResponse
+import json
 
 app = FastAPI()
 
@@ -9,6 +9,9 @@ with open("records.json", "r") as file:
 
 LOOKUP = {r["id"]: r for r in RECORDS}
 
+@app.get("/")
+async def root():
+    return {"status": "MCP server is running"}
 
 @app.post("/")
 async def mcp_endpoint(request: Request):
